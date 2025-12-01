@@ -8,6 +8,7 @@ export async function ensureSchema(): Promise<void> {
     create table if not exists users (
       id uuid primary key default gen_random_uuid(),
       email text unique not null,
+      name text,
       password_hash text not null,
       created_at timestamptz not null default now()
     );
@@ -25,13 +26,32 @@ export async function ensureSchema(): Promise<void> {
     );
   `;
 
+  // addresses table (alamat)
+  await sql`
+    create table if not exists addresses (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid references users(id) on delete set null,
+      label text,
+      recipient_name text,
+      phone text,
+      address text not null,
+      city text,
+      postal_code text,
+      is_default boolean not null default false,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `;
+
   // orders table
   await sql`
     create table if not exists orders (
       id uuid primary key default gen_random_uuid(),
       user_id uuid references users(id) on delete set null,
       total_cents integer not null check (total_cents >= 0),
-      created_at timestamptz not null default now()
+      status text not null default 'pending' check (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
     );
   `;
 
@@ -50,6 +70,30 @@ export async function ensureSchema(): Promise<void> {
   await sql`create index if not exists idx_users_email on users(email);`;
   await sql`create index if not exists idx_products_name on products(name);`;
   await sql`create index if not exists idx_order_items_order on order_items(order_id);`;
+  await sql`create index if not exists idx_orders_user on orders(user_id);`;
+
+  // Ensure orders table has required columns when upgrading existing schema
+  // Add 'status' column if missing (with default pending) and 'updated_at'
+  await sql`alter table orders add column if not exists status text not null default 'pending'`;
+  await sql`alter table orders add column if not exists updated_at timestamptz not null default now()`;
+
+  // Add check constraint for status values if it doesn't already exist
+  await sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_orders_status'
+      ) THEN
+        ALTER TABLE orders ADD CONSTRAINT chk_orders_status CHECK (
+          status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')
+        );
+      END IF;
+    END
+    $$;
+  `;
+
+  // Ensure users table has a 'name' column when upgrading existing schema
+  await sql`alter table users add column if not exists name text`;
 }
 
 

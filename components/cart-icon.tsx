@@ -17,11 +17,11 @@ export function CartIcon() {
         className="
           relative 
           group 
-          overflow-hidden 
-          border-2 border-transparent 
+          overflow-visible
+          border border-border
           bg-gradient-to-r from-primary/10 to-accent/10 
           hover:from-primary/20 hover:to-accent/20 
-          hover:border-gradient-to-r hover:border-primary hover:shadow-[0_0_15px_var(--accent)]
+          hover:border-primary hover:shadow-[0_0_15px_var(--accent)]
           transition-all duration-300 ease-in-out
           rounded-full
         "
@@ -48,11 +48,15 @@ export function CartIcon() {
           <Badge
             variant="destructive"
             className="
-              absolute -top-1.5 -right-1.5 h-5 w-5 flex items-center justify-center 
+              absolute -top-3 -right-3 h-6 w-6 flex items-center justify-center 
               p-0 text-xs font-bold 
               bg-gradient-to-br from-red-500 to-pink-500 text-white
               animate-bounce
-              shadow-[0_0_6px_rgba(255,0,0,0.4)]
+              shadow-[0_0_10px_rgba(255,0,0,0.6),_0_0_20px_rgba(236,72,153,0.4)]
+              rounded-full
+              z-50
+              pointer-events-none
+              border-2 border-white
             "
           >
             {state.totalItems > 99 ? "99+" : state.totalItems}

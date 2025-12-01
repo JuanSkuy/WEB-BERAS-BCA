@@ -1,6 +1,16 @@
+"use client";
+
 import { Button } from "./ui/button";
+import { useCallback } from "react";
 
 export default function HeroSection() {
+  const handleShopNow = useCallback(() => {
+    const el = document.getElementById("produk");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
   return (
     <section
       className="relative h-[75vh] md:h-[85vh] flex flex-col items-center justify-center text-center bg-cover bg-center px-6"
@@ -19,7 +29,10 @@ export default function HeroSection() {
           Nikmati kelezatan dan nutrisi dari beras pilihan Cap Akor, dipanen
           dari sawah terbaik Indonesia.
         </p>
-        <Button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg rounded-full shadow-lg transition-all duration-300 hover:scale-105">
+        <Button 
+          onClick={handleShopNow}
+          className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+        >
           Belanja Sekarang
         </Button>
       </div>

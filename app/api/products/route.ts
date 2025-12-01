@@ -6,7 +6,9 @@ export async function GET() {
   try {
     await ensureSchema();
     const result = await sql`select id, name, price_cents, stock, created_at, updated_at from products order by created_at desc`;
-    return NextResponse.json({ products: (result as any).rows ?? [] });
+    // Handle different response formats from sql
+    const products = Array.isArray(result) ? result : (result as any).rows ?? [];
+    return NextResponse.json({ products });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Server error" }, { status: 500 });
   }
@@ -24,7 +26,8 @@ export async function POST(req: NextRequest) {
       insert into products (name, price_cents, stock) values (${String(name)}, ${Number(price_cents)}, ${safeStock})
       returning id, name, price_cents, stock, created_at, updated_at
     `;
-    return NextResponse.json({ product: (result as any).rows?.[0] }, { status: 201 });
+    const products = Array.isArray(result) ? result : (result as any).rows ?? [];
+    return NextResponse.json({ product: products[0] }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Server error" }, { status: 500 });
   }

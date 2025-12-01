@@ -80,7 +80,7 @@ export default function CartPage() {
                   <div className="flex gap-4">
                     <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                       <Image
-                        src={item.image || "/placeholder.svg"}
+                        src={item.image || "/fotoberas.jpg"}
                         alt={item.name}
                         width={80}
                         height={80}

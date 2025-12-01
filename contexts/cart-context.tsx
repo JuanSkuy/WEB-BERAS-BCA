@@ -37,7 +37,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       if (existingItem) {
         const updatedItems = state.items.map(item =>
           item.id === action.payload.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { 
+                ...item, 
+                quantity: item.quantity + 1,
+                // Pastikan gambar lama juga dinormalisasi
+                image: !item.image ||
+                  item.image.includes("premium-rice") ||
+                  item.image.includes("placeholder")
+                  ? "/fotoberas.jpg"
+                  : item.image,
+              }
             : item
         )
         return {
@@ -47,7 +56,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           totalPrice: updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         }
       } else {
-        const newItem = { ...action.payload, quantity: 1 }
+        const newItem = { 
+          ...action.payload, 
+          quantity: 1,
+          // Gunakan foto beras default jika tidak ada gambar atau gambar lama
+          image: !action.payload.image ||
+            action.payload.image.includes("premium-rice") ||
+            action.payload.image.includes("placeholder")
+            ? "/fotoberas.jpg"
+            : action.payload.image,
+        }
         const updatedItems = [...state.items, newItem]
         return {
           ...state,
@@ -90,10 +108,25 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return initialState
     
     case "LOAD_CART": {
+      // Hanya pertahankan item dengan id UUID valid (item lama pakai slug akan dibuang)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+      const normalizedItems = action.payload
+        .filter(item => uuidRegex.test(item.id))
+        .map(item => ({
+          ...item,
+          // Normalisasi gambar untuk item lama yang mungkin memakai file yang sudah tidak ada
+          image: !item.image ||
+            item.image.includes("premium-rice") ||
+            item.image.includes("placeholder")
+            ? "/fotoberas.jpg"
+            : item.image,
+        }))
+
       return {
-        items: action.payload,
-        totalItems: action.payload.reduce((sum, item) => sum + item.quantity, 0),
-        totalPrice: action.payload.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+        items: normalizedItems,
+        totalItems: normalizedItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalPrice: normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
       }
     }
     

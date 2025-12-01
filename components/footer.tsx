@@ -78,7 +78,7 @@ export default function Footer() {
           <p className="text-muted-foreground">
             Email: info@capakor.com
             <br />
-            Telepon: +62 123 4567 890
+            Telepon: +62 857-6606-0691
           </p>
         </div>
       </div>

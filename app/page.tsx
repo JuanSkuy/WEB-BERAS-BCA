@@ -5,8 +5,38 @@ import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
 import { Leaf, Users, ShoppingBag, Mail, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+
+interface Product {
+  id: string;
+  name: string;
+  price_cents: number;
+  stock: number;
+}
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        // First, try to initialize products
+        await fetch("/api/debug/init-products", { method: "POST" });
+        
+        // Then fetch them
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        setProducts(data.products || []);
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white via-gray-50 to-gray-100 text-foreground">
       <main className="flex-1">
@@ -88,32 +118,24 @@ export default function Home() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-14">
-              {[
-                {
-                  name: "Beras Akor 1kg",
-                  price: "Rp 17.000",
-                  imageUrl: "/premium-rice-1kg.jpg",
-                },
-                {
-                  name: "Beras Akor 5kg",
-                  price: "Rp 80.000",
-                  imageUrl: "/premium-rice-5kg.jpg",
-                },
-                {
-                  name: "Beras Akor 10kg",
-                  price: "Rp 160.000",
-                  imageUrl: "/premium-rice-10kg.jpg",
-                },
-              ].map((item, i) => (
-                <motion.div key={i} whileHover={{ scale: 1.05 }}>
-                  <ProductCard
-                    name={item.name}
-                    description="Beras putih pulen berkualitas tinggi, cocok untuk nasi sehari-hari."
-                    price={item.price}
-                    imageUrl={item.imageUrl}
-                  />
-                </motion.div>
-              ))}
+              {loading ? (
+                <div className="col-span-full text-center">Loading produk...</div>
+              ) : products.length > 0 ? (
+                products.map((item) => (
+                  <motion.div key={item.id} whileHover={{ scale: 1.05 }}>
+                    <ProductCard
+                      id={item.id}
+                      name={item.name}
+                      description="Beras putih pulen berkualitas tinggi, cocok untuk nasi sehari-hari."
+                      price={`Rp ${(item.price_cents / 100).toLocaleString("id-ID")}`}
+                      imageUrl="/fotoberas.jpg"
+                      stock={item.stock}
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-full text-center">Tidak ada produk</div>
+              )}
             </div>
           </motion.div>
         </section>
@@ -229,7 +251,7 @@ export default function Home() {
                 beras.capakor@gmail.com
               </p>
               <p>
-                <Phone className="inline w-4 h-4 mr-2" /> +62 812 3456 7890
+                <Phone className="inline w-4 h-4 mr-2" /> +62 857 6606 0691
               </p>
             </div>
           </div>

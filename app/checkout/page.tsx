@@ -29,9 +29,11 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { state, clearCart } = useCart()
 
-  const [paymentMethod, setPaymentMethod] = useState("transfer")
+  const [paymentMethod, setPaymentMethod] = useState("cod")
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Add a small delay to ensure cart context has loaded
   useEffect(() => {
@@ -107,8 +109,75 @@ export default function CheckoutPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Here you would typically send the order to your backend
-    setIsConfirmOpen(true)
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    // Get form data
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get("name") as string
+    const phone = formData.get("phone") as string
+    const email = formData.get("email") as string
+    const address = formData.get("address") as string
+    const city = formData.get("city") as string
+    const postal = formData.get("postal") as string
+
+    // Validate form data
+    if (!name || !phone || !address || !city || !postal) {
+      setSubmitError("Semua field harus diisi")
+      setIsSubmitting(false)
+      return
+    }
+
+    // Get user session
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then(async (session) => {
+        const userId = session.user?.id
+
+        // Prepare order items
+        const orderItems = state.items.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity,
+        }))
+
+        // Submit order to API
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId || null,
+            items: orderItems,
+            payment_method: paymentMethod,
+            customer_info: {
+              name,
+              phone,
+              email,
+              address,
+              city,
+              postal,
+            },
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          setSubmitError(error.error || "Gagal membuat pesanan")
+          setIsSubmitting(false)
+          return
+        }
+
+        const data = await response.json()
+        console.log("Order created:", data)
+        setIsConfirmOpen(true)
+        setIsSubmitting(false)
+      })
+      .catch((error) => {
+        console.error("Error:", error)
+        setSubmitError("Terjadi kesalahan saat memproses pesanan")
+        setIsSubmitting(false)
+      })
   }
 
   const handleOrderSuccess = () => {
@@ -172,12 +241,6 @@ export default function CheckoutPage() {
                 <CardContent>
                   <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                     <div className="flex items-center space-x-2 p-3 border border-border rounded-lg">
-                      <RadioGroupItem value="transfer" id="transfer" />
-                      <Label htmlFor="transfer" className="flex-1 cursor-pointer">
-                        Transfer Bank
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border border-border rounded-lg">
                       <RadioGroupItem value="cod" id="cod" />
                       <Label htmlFor="cod" className="flex-1 cursor-pointer">
                         Bayar di Tempat (COD)
@@ -189,10 +252,17 @@ export default function CheckoutPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg font-semibold"
+                disabled={isSubmitting}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Pesan Sekarang
+                {isSubmitting ? "Memproses..." : "Pesan Sekarang"}
               </Button>
+
+              {submitError && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
+                  {submitError}
+                </div>
+              )}
             </form>
           </div>
 
@@ -208,7 +278,7 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex gap-3">
                       <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                         <Image
-                          src={item.image || "/placeholder.svg"}
+                          src={item.image || "/fotoberas.jpg"}
                           alt={item.name}
                           width={64}
                           height={64}
@@ -281,7 +351,7 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground">Pembayaran</span>
                   <span className="font-medium text-foreground capitalize flex items-center gap-1">
                     <CreditCard className="w-3 h-3" />
-                    {paymentMethod === "transfer" ? "Transfer Bank" : "COD"}
+                    Bayar di Tempat (COD)
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-border">

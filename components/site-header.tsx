@@ -45,7 +45,7 @@ export default function SiteHeader({
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
-      router.refresh();
+      router.push("/login");
     } catch (error) {
       console.error("Error logging out:", error);
     } finally {
@@ -75,7 +75,7 @@ export default function SiteHeader({
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <button
             onClick={() => {
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              router.push("/");
             }}
             className="text-foreground/80 hover:text-foreground transition-colors cursor-pointer"
           >
@@ -130,6 +130,21 @@ export default function SiteHeader({
                       {user.email}
                     </div>
                   </div>
+                  <div className="h-px bg-border my-1" />
+                  <MenuItem>
+                    {({ focus }) => (
+                      <Link
+                        href="/orders"
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          focus
+                            ? "bg-accent/50 text-foreground"
+                            : "text-foreground"
+                        }`}
+                      >
+                        Riwayat Pesanan
+                      </Link>
+                    )}
+                  </MenuItem>
                   <div className="h-px bg-border my-1" />
                   <MenuItem>
                     {({ focus }) => (
