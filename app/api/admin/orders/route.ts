@@ -11,32 +11,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     
-    let query = sql`
-      select 
-        o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at,
-        u.email as user_email, u.name as user_name,
-        json_agg(
-          json_build_object(
-            'id', oi.id,
-            'product_id', oi.product_id,
-            'product_name', p.name,
-            'quantity', oi.quantity,
-            'price_cents', oi.price_cents
-          )
-        ) as items
-      from orders o
-      left join users u on o.user_id = u.id
-      left join order_items oi on o.id = oi.order_id
-      left join products p on oi.product_id = p.id
-    `;
-    
+    // Build the query - simplified to match working pattern
+    let result;
     if (status) {
-      query = sql`
-        select 
+      result = await sql`
+        SELECT 
           o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at,
           u.email as user_email, u.name as user_name,
-          json_agg(
-            json_build_object(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
               'id', oi.id,
               'product_id', oi.product_id,
               'product_name', p.name,
@@ -44,21 +27,21 @@ export async function GET(req: NextRequest) {
               'price_cents', oi.price_cents
             )
           ) as items
-        from orders o
-        left join users u on o.user_id = u.id
-        left join order_items oi on o.id = oi.order_id
-        left join products p on oi.product_id = p.id
-        where o.status = ${status}
-        group by o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at, u.email, u.name
-        order by o.created_at desc
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.status = ${status}
+        GROUP BY o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at, u.email, u.name
+        ORDER BY o.created_at DESC
       `;
     } else {
-      query = sql`
-        select 
+      result = await sql`
+        SELECT 
           o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at,
           u.email as user_email, u.name as user_name,
-          json_agg(
-            json_build_object(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
               'id', oi.id,
               'product_id', oi.product_id,
               'product_name', p.name,
@@ -66,23 +49,34 @@ export async function GET(req: NextRequest) {
               'price_cents', oi.price_cents
             )
           ) as items
-        from orders o
-        left join users u on o.user_id = u.id
-        left join order_items oi on o.id = oi.order_id
-        left join products p on oi.product_id = p.id
-        group by o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at, u.email, u.name
-        order by o.created_at desc
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        GROUP BY o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at, u.email, u.name
+        ORDER BY o.created_at DESC
+        LIMIT 1000
       `;
     }
     
-    const result = await query;
     const orders = Array.isArray(result) ? result : (result as any).rows ?? [];
-    return NextResponse.json({ orders });
+    
+    // Handle null items - convert to empty array if null
+    const processedOrders = orders.map((order: any) => ({
+      ...order,
+      items: order.items && Array.isArray(order.items) ? order.items : []
+    }));
+    
+    return NextResponse.json({ orders: processedOrders });
   } catch (error: any) {
     if (error.message === "Admin access required") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: error?.message ?? "Server error" }, { status: 500 });
+    console.error("Error fetching admin orders:", error);
+    return NextResponse.json({ 
+      error: error?.message ?? "Server error",
+      details: process.env.NODE_ENV === "development" ? error?.stack : undefined
+    }, { status: 500 });
   }
 }
 

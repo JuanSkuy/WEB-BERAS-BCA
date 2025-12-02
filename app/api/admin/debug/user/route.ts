@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         found: false,
         message: "User tidak ditemukan",
-        suggestion: "Buat user admin terlebih dahulu di /admin/setup"
+        suggestion: "Silakan hubungi administrator untuk membuat akun admin"
       });
     }
 

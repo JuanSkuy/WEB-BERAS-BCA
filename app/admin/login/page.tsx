@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
           } else if (debugData.found && debugData.user.is_admin) {
             setError("Password salah. Silakan coba lagi.");
           } else {
-            setError("Email tidak terdaftar sebagai admin. Buat akun admin di /admin/setup");
+            setError("Email tidak terdaftar sebagai admin. Silakan hubungi administrator.");
           }
         } else {
           setError(data.error || "Login gagal");
@@ -121,17 +121,6 @@ export default function AdminLoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Memproses..." : "Masuk"}
             </Button>
-            <div className="text-center text-sm space-y-2">
-              <p className="text-gray-600">
-                Belum punya akun admin?
-              </p>
-              <a
-                href="/admin/setup"
-                className="text-primary hover:underline font-medium"
-              >
-                Buat Akun Admin
-              </a>
-            </div>
           </form>
         </CardContent>
       </Card>
