@@ -18,6 +18,22 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactStatus, setContactStatus] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
+  const [contactError, setContactError] = useState("");
+
+  function getProductImage(name: string) {
+    if (name.includes("10kg")) return "/10kg beras.jpg";
+    if (name.includes("20kg")) return "/20kg beras.jpg";
+    if (name.includes("50kg")) return "/50kg beras.jpg";
+    return "/fotoberas.jpg";
+  }
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -37,6 +53,46 @@ export default function Home() {
 
     fetchProducts();
   }, []);
+
+  async function handleContactSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setContactLoading(true);
+    setContactStatus("idle");
+    setContactError("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactName,
+          email: contactEmail,
+          message: contactMessage,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        setContactStatus("error");
+        setContactError(
+          data.error || "Gagal mengirim pesan. Silakan coba lagi.",
+        );
+        return;
+      }
+
+      setContactStatus("success");
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (err) {
+      setContactStatus("error");
+      setContactError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setContactLoading(false);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white via-gray-50 to-gray-100 text-foreground">
       <main className="flex-1">
@@ -53,11 +109,11 @@ export default function Home() {
             className="container mx-auto px-4 md:px-6 text-center relative z-10"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-5 bg-gradient-to-r from-green-700 to-green-400 bg-clip-text text-transparent leading-normal">
-              Mengapa Memilih Beras Cap Akor?
+              Mengapa Memilih Beras Ciherang?
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Kami berkomitmen menyediakan beras berkualitas tinggi — sehat,
-              lezat, dan aman untuk keluarga Anda. Setiap butir beras Cap Akor
+              lezat, dan aman untuk keluarga Anda. Setiap butir beras Ciherang
               diproses dengan standar terbaik.
             </p>
 
@@ -110,10 +166,10 @@ export default function Home() {
             className="container mx-auto px-4 md:px-6 text-center"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-5 bg-gradient-to-r from-green-700 to-green-400 bg-clip-text text-transparent leading-normal">
-              Produk Unggulan Cap Akor
+              Produk Unggulan Beras Ciherang
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Temukan berbagai pilihan beras Cap Akor yang sesuai dengan
+              Beras Ciherang yang sesuai dengan
               kebutuhan dan selera Anda.
             </p>
 
@@ -127,8 +183,8 @@ export default function Home() {
                       id={item.id}
                       name={item.name}
                       description="Beras putih pulen berkualitas tinggi, cocok untuk nasi sehari-hari."
-                      price={`Rp ${(item.price_cents / 100).toLocaleString("id-ID")}`}
-                      imageUrl="/fotoberas.jpg"
+                      price={`Rp${(item.price_cents / 100).toLocaleString("id-ID")}`}
+                      imageUrl={getProductImage(item.name)}
                       stock={item.stock}
                     />
                   </motion.div>
@@ -221,37 +277,60 @@ export default function Home() {
               kami.
             </p>
 
-            <form className="max-w-xl mx-auto bg-white shadow-md rounded-lg p-8 space-y-4">
+            <form
+              onSubmit={handleContactSubmit}
+              className="max-w-xl mx-auto bg-white shadow-md rounded-lg p-8 space-y-4"
+            >
               <input
                 type="text"
                 placeholder="Nama Anda"
                 className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                required
               />
               <input
                 type="email"
                 placeholder="Email Anda"
                 className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                 value={contactEmail}
+                 onChange={(e) => setContactEmail(e.target.value)}
+                 required
               />
               <textarea
                 placeholder="Pesan Anda"
                 rows={5}
                 className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                required
               ></textarea>
+
+              {contactStatus === "success" && (
+                <p className="text-sm text-green-600 text-left">
+                  Terima kasih, pesan Anda sudah terkirim.
+                </p>
+              )}
+              {contactStatus === "error" && (
+                <p className="text-sm text-red-600 text-left">{contactError}</p>
+              )}
+
               <button
                 type="submit"
-                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition"
+                disabled={contactLoading}
+                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition disabled:opacity-70"
               >
-                Kirim Pesan
+                {contactLoading ? "Mengirim..." : "Kirim Pesan"}
               </button>
             </form>
 
             <div className="mt-8 text-gray-600">
               <p>
                 <Mail className="inline w-4 h-4 mr-2" />
-                beras.capakor@gmail.com
+                support@capakor.com
               </p>
               <p>
-                <Phone className="inline w-4 h-4 mr-2" /> +62 857 6606 0691
+                <Phone className="inline w-4 h-4 mr-2" /> +62 812-3456-7890
               </p>
             </div>
           </div>

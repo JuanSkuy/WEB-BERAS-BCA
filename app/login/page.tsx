@@ -130,6 +130,23 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          <p className="mt-3 text-sm">
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  `/forgot-password${
+                    email ? `?email=${encodeURIComponent(email)}` : ""
+                  }`,
+                )
+              }
+              className="text-primary underline"
+            >
+              Lupa kata sandi?
+            </button>
+          </p>
+
           <p className="mt-4 text-sm text-muted-foreground">
             Belum punya akun? <Link className="text-primary underline" href="/register">Daftar</Link>
           </p>

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { CheckCircle, Package, CreditCard, Home, ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { calculateShippingCost } from "@/lib/utils"
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -31,51 +32,43 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState("cod")
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [session, setSession] = useState<any>(null)
 
-  // Add a small delay to ensure cart context has loaded
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Check if cart items exist in localStorage but not in state
-  useEffect(() => {
-    const savedCart = localStorage.getItem("cart")
-    if (savedCart && state.items.length === 0) {
-      try {
-        const cartItems = JSON.parse(savedCart)
-        if (Array.isArray(cartItems) && cartItems.length > 0) {
-          console.log("Checkout page - Cart items exist in localStorage but not in state, waiting for cart context to load...")
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((sessionData) => {
+        if (!sessionData.user) {
+          router.push("/login?redirect=/checkout")
+        } else {
+          setSession(sessionData)
+          setIsCheckingAuth(false)
         }
-      } catch (error) {
-        console.error("Error parsing cart from localStorage:", error)
-      }
-    }
-  }, [state.items.length])
+      })
+      .catch(() => {
+        router.push("/login?redirect=/checkout")
+      })
+  }, [router])
 
   // Show loading while cart is being loaded
-  if (isLoading) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Memuat keranjang...</p>
+          <p className="text-muted-foreground">Mengecek otentikasi...</p>
         </div>
       </div>
     )
   }
 
   // Show loading while cart is being loaded from localStorage
-  if (typeof window !== 'undefined' && state.items.length === 0) {
+  if (typeof window !== "undefined" && state.items.length === 0) {
     // Check if cart is actually empty or just not loaded yet
     const savedCart = localStorage.getItem("cart")
-    console.log("Checkout page - savedCart:", savedCart)
-    console.log("Checkout page - state.items:", state.items)
     if (savedCart && JSON.parse(savedCart).length > 0) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
@@ -94,10 +87,10 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-semibold">Keranjang Kosong</h1>
-          <p className="text-muted-foreground">Tidak ada item di keranjang Anda</p>
-          <Button onClick={() => router.push("/")}>
-            Kembali ke Beranda
-          </Button>
+          <p className="text-muted-foreground">
+            Tidak ada item di keranjang Anda
+          </p>
+          <Button onClick={() => router.push("/")}>Kembali ke Beranda</Button>
         </div>
       </div>
     )
@@ -107,7 +100,15 @@ export default function CheckoutPage() {
     return `Rp ${price.toLocaleString("id-ID")}`
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Calculate shipping cost based on total quantity
+  const totalQuantity = state.items.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  )
+  const shippingCost = calculateShippingCost(totalQuantity)
+  const totalWithShipping = state.totalPrice + shippingCost
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
     setSubmitError(null)
@@ -128,56 +129,53 @@ export default function CheckoutPage() {
       return
     }
 
-    // Get user session
-    fetch("/api/auth/session")
-      .then((res) => res.json())
-      .then(async (session) => {
-        const userId = session.user?.id
+    // Prepare order items
+    const orderItems = state.items.map((item) => ({
+      product_id: item.id,
+      quantity: item.quantity,
+    }))
 
-        // Prepare order items
-        const orderItems = state.items.map((item) => ({
-          product_id: item.id,
-          quantity: item.quantity,
-        }))
+    // Calculate shipping cost
+    const shippingCostCents = shippingCost * 100
 
-        // Submit order to API
-        const response = await fetch("/api/checkout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+    // Submit order to API
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: orderItems,
+          payment_method: paymentMethod,
+          shipping_cost_cents: shippingCostCents,
+          customer_info: {
+            name,
+            phone,
+            email,
+            address,
+            city,
+            postal,
           },
-          body: JSON.stringify({
-            user_id: userId || null,
-            items: orderItems,
-            payment_method: paymentMethod,
-            customer_info: {
-              name,
-              phone,
-              email,
-              address,
-              city,
-              postal,
-            },
-          }),
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          setSubmitError(error.error || "Gagal membuat pesanan")
-          setIsSubmitting(false)
-          return
-        }
-
-        const data = await response.json()
-        console.log("Order created:", data)
-        setIsConfirmOpen(true)
-        setIsSubmitting(false)
+        }),
       })
-      .catch((error) => {
-        console.error("Error:", error)
-        setSubmitError("Terjadi kesalahan saat memproses pesanan")
+
+      if (!response.ok) {
+        const error = await response.json()
+        setSubmitError(error.error || "Gagal membuat pesanan")
         setIsSubmitting(false)
-      })
+        return
+      }
+
+      const data = await response.json()
+      console.log("Order created:", data)
+      setIsConfirmOpen(true)
+      setIsSubmitting(false)
+    } catch (error) {
+      console.error("Error:", error)
+      setSubmitError("Terjadi kesalahan saat memproses pesanan")
+      setIsSubmitting(false)
+    }
   }
 
   const handleOrderSuccess = () => {
@@ -305,11 +303,11 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Ongkos Kirim</span>
-                    <span className="text-foreground">Dihitung saat konfirmasi</span>
+                    <span className="text-foreground">{formatPrice(shippingCost)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                     <span className="text-foreground">Total</span>
-                    <span className="text-primary">{formatPrice(state.totalPrice)}</span>
+                    <span className="text-primary">{formatPrice(totalWithShipping)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -356,7 +354,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-border">
                   <span className="font-semibold text-foreground">Total</span>
-                  <span className="font-bold text-lg text-primary">{formatPrice(state.totalPrice)}</span>
+                  <span className="font-bold text-lg text-primary">{formatPrice(totalWithShipping)}</span>
                 </div>
               </div>
             </div>

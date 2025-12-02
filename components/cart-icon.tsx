@@ -5,12 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function CartIcon() {
   const { state } = useCart();
+  const [session, setSession] = useState<any>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((sessionData) => {
+        setSession(sessionData);
+        setIsCheckingAuth(false);
+      })
+      .catch(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
+
+  const getLinkHref = () => {
+    if (isCheckingAuth) {
+      return "#"; // Or a loading indicator can be shown
+    }
+    return session?.user ? "/cart" : "/login?redirect=/cart";
+  };
 
   return (
-    <Link href="/cart">
+    <Link href={getLinkHref()}>
       <Button
         variant="outline"
         size="icon"

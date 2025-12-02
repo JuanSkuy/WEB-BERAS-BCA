@@ -82,24 +82,24 @@ export default function SiteHeader({
             Beranda
           </button>
 
-          <a
-            href="/#tentang-kami"
+          <Link
+            href="/tentang-kami"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
             Tentang Kami
-          </a>
-          <a
-            href="/#produk"
+          </Link>
+          <Link
+            href="/produk"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
             Produk
-          </a>
-          <a
-            href="/#kontak"
+          </Link>
+          <Link
+            href="/kontak"
             className="text-foreground/80 hover:text-foreground transition-colors"
           >
             Kontak
-          </a>
+          </Link>
         </nav>
 
         {/* Bagian Kanan (Login/Register/Cart) */}

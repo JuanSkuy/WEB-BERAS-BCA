@@ -25,7 +25,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/#products"
+                  href="/produk"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Produk
@@ -33,7 +33,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/#tentang-kami"
+                  href="/tentang-kami"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Tentang Kami
@@ -41,7 +41,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/#kontak"
+                  href="/kontak"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Kontak
@@ -76,9 +76,11 @@ export default function Footer() {
         <div className="space-y-4">
           <h4 className="text-lg font-semibold">Hubungi Kami</h4>
           <p className="text-muted-foreground">
-            Email: info@capakor.com
+            Email: support@capakor.com
             <br />
-            Telepon: +62 857-6606-0691
+            Telepon: +62 812-3456-7890
+            <br />
+            Alamat: Jl. Hijau Lestari No. 45, Bandung, Indonesia
           </p>
         </div>
       </div>

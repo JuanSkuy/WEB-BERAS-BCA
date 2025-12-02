@@ -22,18 +22,21 @@ export async function POST(req: NextRequest) {
     // Insert default products
     const products = [
       {
-        name: "Beras Akor 1kg",
-        price_cents: 1700000,
+        // 10kg dengan harga Rp135.000
+        name: "Beras Ciherang 10kg",
+        price_cents: 135000 * 100,
         stock: 100,
       },
       {
-        name: "Beras Akor 5kg",
-        price_cents: 8000000,
+        // 20kg dengan harga Rp260.000
+        name: "Beras Ciherang 20kg",
+        price_cents: 260000 * 100,
         stock: 50,
       },
       {
-        name: "Beras Akor 10kg",
-        price_cents: 16000000,
+        // 50kg dengan harga Rp630.000
+        name: "Beras Ciherang 50kg",
+        price_cents: 630000 * 100,
         stock: 30,
       },
     ];

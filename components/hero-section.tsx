@@ -1,15 +1,14 @@
 "use client";
 
 import { Button } from "./ui/button";
-import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HeroSection() {
-  const handleShopNow = useCallback(() => {
-    const el = document.getElementById("produk");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, []);
+  const router = useRouter();
+
+  const handleShopNow = () => {
+    router.push("/produk");
+  };
 
   return (
     <section

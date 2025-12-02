@@ -10,10 +10,25 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function CartPage() {
   const { state, updateQuantity, removeItem, clearCart } = useCart()
   const router = useRouter()
+  const [session, setSession] = useState<any>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((sessionData) => {
+        setSession(sessionData)
+        setIsCheckingAuth(false)
+      })
+      .catch(() => {
+        setIsCheckingAuth(false)
+      })
+  }, [])
 
   const formatPrice = (price: number) => {
     return `Rp ${price.toLocaleString("id-ID")}`
@@ -21,7 +36,13 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (state.items.length === 0) return
-    router.push("/checkout")
+    if (isCheckingAuth) return
+
+    if (session?.user) {
+      router.push("/checkout")
+    } else {
+      router.push("/login?redirect=/cart")
+    }
   }
 
   if (state.items.length === 0) {

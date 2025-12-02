@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import Link from "next/link";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 interface OrderItem {
   id: string;
@@ -21,6 +22,7 @@ interface Order {
   id: string;
   user_id: string;
   total_cents: number;
+  shipping_cost_cents?: number;
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   created_at: string;
   updated_at: string;
@@ -71,32 +73,40 @@ export default function OrderDetailPage() {
     checkAuth();
   }, [router]);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/orders");
-        if (res.status === 401) {
-          router.push("/login");
-          return;
-        }
-        if (!res.ok) throw new Error("Failed to fetch orders");
-        const data = await res.json();
-        const foundOrder = data.orders?.find((o: Order) => o.id === orderId);
-        if (!foundOrder) {
-          setError("Pesanan tidak ditemukan");
-          return;
-        }
-        setOrder(foundOrder);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
+  const fetchOrder = useCallback(async () => {
+    try {
+      const res = await fetch("/api/orders");
+      if (res.status === 401) {
+        router.push("/login");
+        return;
       }
-    };
-
-    fetchOrder();
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      const data = await res.json();
+      const foundOrder = data.orders?.find((o: Order) => o.id === orderId);
+      if (!foundOrder) {
+        setError("Pesanan tidak ditemukan");
+        return;
+      }
+      setOrder(foundOrder);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   }, [router, orderId]);
+
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
+
+  // Auto refresh setiap 15 detik, berhenti jika pesanan sudah selesai atau dibatalkan
+  const shouldAutoRefresh = order && order.status !== "delivered" && order.status !== "cancelled";
+  useAutoRefresh({
+    interval: 15000, // 15 detik
+    enabled: shouldAutoRefresh,
+    onRefresh: fetchOrder,
+  });
 
   if (loading) {
     return (
@@ -250,16 +260,30 @@ export default function OrderDetailPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>Rp{(order.total_cents / 100).toLocaleString("id-ID")}</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between items-center">
-              <span className="font-bold">Total:</span>
-              <span className="text-2xl font-bold">
-                Rp{(order.total_cents / 100).toLocaleString("id-ID")}
-              </span>
-            </div>
+            {(() => {
+              const shippingCost = order.shipping_cost_cents ? order.shipping_cost_cents / 100 : 0;
+              const subtotal = order.total_cents - shippingCost;
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>Rp{(subtotal / 100).toLocaleString("id-ID")}</span>
+                  </div>
+                  {shippingCost > 0 && (
+                    <div className="flex justify-between">
+                      <span>Ongkos Kirim:</span>
+                      <span>Rp{shippingCost.toLocaleString("id-ID")}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2 flex justify-between items-center">
+                    <span className="font-bold">Total:</span>
+                    <span className="text-2xl font-bold">
+                      Rp{(order.total_cents / 100).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>

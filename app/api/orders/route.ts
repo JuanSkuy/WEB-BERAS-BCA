@@ -15,6 +15,7 @@ export async function GET() {
         o.id,
         o.user_id,
         o.total_cents,
+        o.shipping_cost_cents,
         o.status,
         o.created_at,
         o.updated_at,
@@ -31,7 +32,7 @@ export async function GET() {
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN products p ON oi.product_id = p.id
       WHERE o.user_id = ${session.userId}
-      GROUP BY o.id, o.user_id, o.total_cents, o.status, o.created_at, o.updated_at
+      GROUP BY o.id, o.user_id, o.total_cents, o.shipping_cost_cents, o.status, o.created_at, o.updated_at
       ORDER BY o.created_at DESC
     `;
 

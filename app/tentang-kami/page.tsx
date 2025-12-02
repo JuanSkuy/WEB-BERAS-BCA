@@ -84,7 +84,7 @@ export default function TentangKamiPage() {
           transition={{ delay: 1 }}
           className="mt-16"
         >
-          <Link href="/#products">
+          <Link href="/#produk">
             <Button className="px-8 py-6 text-lg bg-green-600 hover:bg-green-700 text-white transition-all duration-300 hover:scale-105">
               Belanja Sekarang
             </Button>

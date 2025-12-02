@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema } from "@/lib/schema-init";
 import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
 type CartItem = { product_id: string; quantity: number };
 
 type CheckoutRequest = {
-  user_id?: string;
   items: CartItem[];
   payment_method?: string;
+  shipping_cost_cents?: number;
   customer_info?: {
     name: string;
     phone: string;
@@ -20,11 +21,17 @@ type CheckoutRequest = {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session?.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.userId;
+
     await ensureSchema();
     const {
-      user_id,
       items,
       payment_method = "transfer",
+      shipping_cost_cents = 0,
       customer_info,
     } = (await req.json()) as CheckoutRequest;
 
@@ -42,21 +49,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate stock and compute total
-    let totalCents = 0;
+    let subtotalCents = 0;
     for (const item of items) {
       const product = productMap.get(item.product_id);
       if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
       if (item.quantity <= 0) return NextResponse.json({ error: "Invalid quantity" }, { status: 400 });
       if (product.stock < item.quantity)
         return NextResponse.json({ error: "Insufficient stock" }, { status: 409 });
-      totalCents += product.price_cents * item.quantity;
+      subtotalCents += product.price_cents * item.quantity;
     }
+
+    // Calculate total including shipping
+    const totalCents = subtotalCents + shipping_cost_cents;
 
     // Create order with status 'pending'
     const orderIns = await sql`
-      insert into orders (user_id, total_cents, status) 
-      values (${user_id ?? null}, ${totalCents}, 'pending') 
-      returning id, total_cents, created_at, status
+      insert into orders (user_id, total_cents, shipping_cost_cents, status) 
+      values (${userId}, ${totalCents}, ${shipping_cost_cents}, 'pending') 
+      returning id, total_cents, shipping_cost_cents, created_at, status
     `;
     const orderRows = Array.isArray(orderIns) ? orderIns : (orderIns as any).rows ?? [];
     const order = orderRows[0];
@@ -85,7 +95,7 @@ export async function POST(req: NextRequest) {
       try {
         const addrIns = await sql`
           insert into addresses (user_id, recipient_name, phone, address, city, postal_code, created_at, updated_at)
-          values (${user_id ?? null}, ${customer_info.name ?? null}, ${customer_info.phone ?? null}, ${customer_info.address}, ${customer_info.city ?? null}, ${customer_info.postal ?? null}, now(), now())
+          values (${userId}, ${customer_info.name ?? null}, ${customer_info.phone ?? null}, ${customer_info.address}, ${customer_info.city ?? null}, ${customer_info.postal ?? null}, now(), now())
           returning id, user_id, label, recipient_name, phone, address, city, postal_code, is_default, created_at, updated_at
         `;
         const addrRows = Array.isArray(addrIns) ? addrIns : (addrIns as any).rows ?? [];

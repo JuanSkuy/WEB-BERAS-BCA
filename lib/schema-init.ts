@@ -76,6 +76,8 @@ export async function ensureSchema(): Promise<void> {
   // Add 'status' column if missing (with default pending) and 'updated_at'
   await sql`alter table orders add column if not exists status text not null default 'pending'`;
   await sql`alter table orders add column if not exists updated_at timestamptz not null default now()`;
+  // Add shipping_cost_cents column for shipping cost calculation
+  await sql`alter table orders add column if not exists shipping_cost_cents integer not null default 0 check (shipping_cost_cents >= 0)`;
 
   // Add check constraint for status values if it doesn't already exist
   await sql`
@@ -94,6 +96,53 @@ export async function ensureSchema(): Promise<void> {
 
   // Ensure users table has a 'name' column when upgrading existing schema
   await sql`alter table users add column if not exists name text`;
+  
+  // Add role column to users table (default 'user', can be 'admin')
+  await sql`alter table users add column if not exists role text not null default 'user'`;
+  await sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_role'
+      ) THEN
+        ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (
+          role in ('user', 'admin')
+        );
+      END IF;
+    END
+    $$;
+  `;
+
+  // categories table
+  await sql`
+    create table if not exists categories (
+      id uuid primary key default gen_random_uuid(),
+      name text not null unique,
+      description text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `;
+
+  // Add category_id and image to products table
+  await sql`alter table products add column if not exists category_id uuid references categories(id) on delete set null`;
+  await sql`alter table products add column if not exists image text`;
+  await sql`alter table products add column if not exists description text`;
+
+  // settings table (for store settings)
+  await sql`
+    create table if not exists settings (
+      id uuid primary key default gen_random_uuid(),
+      key text not null unique,
+      value text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `;
+
+  // Create indexes
+  await sql`create index if not exists idx_products_category on products(category_id)`;
+  await sql`create index if not exists idx_users_role on users(role)`;
 }
 
 

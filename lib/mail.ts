@@ -1,31 +1,45 @@
 type SendResult = { success: boolean; info?: any; error?: string };
 
-export async function sendResetEmail(to: string, resetLink: string): Promise<SendResult> {
+async function getTransport() {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.EMAIL_FROM || `no-reply@${process.env.NEXT_PUBLIC_BASE_URL?.replace(/^https?:\/\//, "") || "example.com"}`;
 
   if (!host || !port || !user || !pass) {
-    return { success: false, error: "SMTP credentials not configured" };
+    return { transporter: null as any, error: "SMTP credentials not configured" as const };
   }
 
   // Dynamic import so app still builds if nodemailer isn't installed yet
   const nodemailerModule = await import("nodemailer").catch(() => null);
   if (!nodemailerModule) {
-    return { success: false, error: "nodemailer not installed" };
+    return { transporter: null as any, error: "nodemailer not installed" as const };
   }
   const nodemailer = (nodemailerModule as any).default || nodemailerModule;
 
-  try {
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465, // true for 465, false for other ports
-      auth: { user, pass },
-    });
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for 465, false for other ports
+    auth: { user, pass },
+  });
 
+  return { transporter, error: null as string | null };
+}
+
+export async function sendResetEmail(to: string, resetLink: string): Promise<SendResult> {
+  const from =
+    process.env.EMAIL_FROM ||
+    `no-reply@${
+      process.env.NEXT_PUBLIC_BASE_URL?.replace(/^https?:\/\//, "") || "example.com"
+    }`;
+
+  const { transporter, error } = await getTransport();
+  if (!transporter) {
+    return { success: false, error: error || "SMTP transport not available" };
+  }
+
+  try {
     const subject = "Reset Password - Cap Akor";
     const text = `Kami menerima permintaan reset password. Gunakan link berikut untuk mengubah password Anda:\n\n${resetLink}\n\nJika Anda tidak meminta reset, abaikan pesan ini.`;
     const html = `
@@ -45,6 +59,51 @@ export async function sendResetEmail(to: string, resetLink: string): Promise<Sen
     const info = await transporter.sendMail({
       from,
       to,
+      subject,
+      text,
+      html,
+    });
+
+    return { success: true, info };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+export async function sendContactEmail(params: {
+  name: string;
+  email: string;
+  message: string;
+}): Promise<SendResult> {
+  const to = process.env.CONTACT_EMAIL || "beras.capakor@gmail.com";
+  const from =
+    process.env.EMAIL_FROM ||
+    `no-reply@${
+      process.env.NEXT_PUBLIC_BASE_URL?.replace(/^https?:\/\//, "") || "example.com"
+    }`;
+
+  const { transporter, error } = await getTransport();
+  if (!transporter) {
+    return { success: false, error: error || "SMTP transport not available" };
+  }
+
+  try {
+    const subject = "Pesan Baru dari Form Hubungi Kami - Cap Akor";
+    const text = `Anda menerima pesan baru dari halaman Hubungi Kami:\n\nNama: ${params.name}\nEmail: ${params.email}\n\nPesan:\n${params.message}\n`;
+    const html = `
+      <div style="font-family: sans-serif; line-height: 1.6;">
+        <h2>Pesan Baru dari Form Hubungi Kami</h2>
+        <p><strong>Nama:</strong> ${params.name}</p>
+        <p><strong>Email:</strong> ${params.email}</p>
+        <p><strong>Pesan:</strong></p>
+        <p>${params.message.replace(/\n/g, "<br/>")}</p>
+      </div>
+    `;
+
+    const info = await transporter.sendMail({
+      from,
+      to,
+      replyTo: params.email,
       subject,
       text,
       html,
