@@ -23,6 +23,7 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -116,6 +117,7 @@ export default function AdminLayout({
 
   const menuItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/admin/products", label: "Produk", icon: Package },
     { href: "/admin/categories", label: "Kategori", icon: FolderTree },
     { href: "/admin/orders", label: "Pesanan", icon: ShoppingCart },

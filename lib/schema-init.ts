@@ -30,7 +30,7 @@ export async function ensureSchema(): Promise<void> {
   await sql`
     create table if not exists addresses (
       id uuid primary key default gen_random_uuid(),
-      user_id uuid references users(id) on delete set null,
+      user_id uuid references users(id) on delete cascade,
       label text,
       recipient_name text,
       phone text,
@@ -42,6 +42,9 @@ export async function ensureSchema(): Promise<void> {
       updated_at timestamptz not null default now()
     );
   `;
+  
+  // Index for addresses
+  await sql`create index if not exists idx_addresses_user_id on addresses(user_id);`;
 
   // orders table
   await sql`
@@ -49,7 +52,18 @@ export async function ensureSchema(): Promise<void> {
       id uuid primary key default gen_random_uuid(),
       user_id uuid references users(id) on delete set null,
       total_cents integer not null check (total_cents >= 0),
+      shipping_cost_cents integer not null default 0 check (shipping_cost_cents >= 0),
       status text not null default 'pending' check (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+      -- Payment fields
+      payment_method text,
+      payment_invoice_number text,
+      payment_url text,
+      payment_status text,
+      payment_channel text,
+      payment_code text,
+      payment_expired_at timestamptz,
+      payment_status_date timestamptz,
+      -- Timestamps
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
@@ -71,13 +85,24 @@ export async function ensureSchema(): Promise<void> {
   await sql`create index if not exists idx_products_name on products(name);`;
   await sql`create index if not exists idx_order_items_order on order_items(order_id);`;
   await sql`create index if not exists idx_orders_user on orders(user_id);`;
+  await sql`create index if not exists idx_orders_status on orders(status);`;
+  await sql`create index if not exists idx_orders_payment_invoice on orders(payment_invoice_number);`;
 
   // Ensure orders table has required columns when upgrading existing schema
-  // Add 'status' column if missing (with default pending) and 'updated_at'
+  // These ALTER TABLE statements ensure backward compatibility with existing databases
   await sql`alter table orders add column if not exists status text not null default 'pending'`;
   await sql`alter table orders add column if not exists updated_at timestamptz not null default now()`;
-  // Add shipping_cost_cents column for shipping cost calculation
   await sql`alter table orders add column if not exists shipping_cost_cents integer not null default 0 check (shipping_cost_cents >= 0)`;
+  
+  // Add payment columns for payment gateway integration (for existing databases)
+  await sql`alter table orders add column if not exists payment_method text`;
+  await sql`alter table orders add column if not exists payment_invoice_number text`;
+  await sql`alter table orders add column if not exists payment_url text`;
+  await sql`alter table orders add column if not exists payment_status text`;
+  await sql`alter table orders add column if not exists payment_channel text`;
+  await sql`alter table orders add column if not exists payment_code text`;
+  await sql`alter table orders add column if not exists payment_expired_at timestamptz`;
+  await sql`alter table orders add column if not exists payment_status_date timestamptz`;
 
   // Add check constraint for status values if it doesn't already exist
   await sql`
@@ -128,6 +153,7 @@ export async function ensureSchema(): Promise<void> {
   await sql`alter table products add column if not exists category_id uuid references categories(id) on delete set null`;
   await sql`alter table products add column if not exists image text`;
   await sql`alter table products add column if not exists description text`;
+  await sql`alter table products add column if not exists weight_kg numeric(10, 2) check (weight_kg >= 0)`;
 
   // settings table (for store settings)
   await sql`

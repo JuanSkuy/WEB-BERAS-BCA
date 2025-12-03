@@ -5,7 +5,13 @@ import { sql } from "@/lib/db";
 export async function GET() {
   try {
     await ensureSchema();
-    const result = await sql`select id, name, price_cents, stock, created_at, updated_at from products order by created_at desc`;
+    const result = await sql`
+      select 
+        id, name, price_cents, stock, image, description, weight_kg,
+        created_at, updated_at 
+      from products 
+      order by created_at desc
+    `;
     // Handle different response formats from sql
     const products = Array.isArray(result) ? result : (result as any).rows ?? [];
     return NextResponse.json({ products });

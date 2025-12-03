@@ -75,13 +75,26 @@ CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   total_cents INTEGER NOT NULL CHECK (total_cents >= 0),
+  shipping_cost_cents INTEGER NOT NULL DEFAULT 0 CHECK (shipping_cost_cents >= 0),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+  -- Payment fields
+  payment_method TEXT,
+  payment_invoice_number TEXT,
+  payment_url TEXT,
+  payment_status TEXT,
+  payment_channel TEXT,
+  payment_code TEXT,
+  payment_expired_at TIMESTAMPTZ,
+  payment_status_date TIMESTAMPTZ,
+  -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_invoice ON orders(payment_invoice_number);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
 
 -- ============================================
 -- TABEL ORDER_ITEMS

@@ -34,18 +34,18 @@ interface Settings {
 }
 
 const fetchSettings = async (): Promise<Settings> => {
-  const res = await fetch("/api/admin/settings");
+      const res = await fetch("/api/admin/settings");
   if (!res.ok) throw new Error("Failed to fetch settings");
-  const data = await res.json();
+        const data = await res.json();
   return data.settings || {};
-};
+  };
 
 const saveSetting = async (key: string, value: string) => {
-  const res = await fetch("/api/admin/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, value }),
-  });
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, value }),
+      });
   if (!res.ok) {
     const data = await res.json();
     throw new Error(data.error || "Failed to save setting");
@@ -88,7 +88,7 @@ export default function AdminSettingsPage() {
         id: "fetch-settings",
         description: "Pengaturan toko siap diubah",
       });
-    }
+      }
   }, [settingsLoading, settingsError, settings]);
 
   const saveMutation = useMutation({
@@ -153,7 +153,7 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
               <Settings className="w-6 h-6 text-primary" />
@@ -212,66 +212,66 @@ export default function AdminSettingsPage() {
                 </CardDescription>
               </div>
             </div>
-          </CardHeader>
+        </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="store_name" className="text-sm font-semibold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-gray-500" />
                 Nama Toko
               </Label>
-              <Input
-                id="store_name"
+            <Input
+              id="store_name"
                 value={formData.store_name || ""}
-                onChange={(e) => handleChange("store_name", e.target.value)}
+              onChange={(e) => handleChange("store_name", e.target.value)}
                 placeholder="Contoh: Toko Beras BCA"
                 className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
+            />
+          </div>
+          <div className="space-y-2">
               <Label htmlFor="store_address" className="text-sm font-semibold flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-gray-500" />
                 Alamat Toko
               </Label>
-              <Textarea
-                id="store_address"
+            <Textarea
+              id="store_address"
                 value={formData.store_address || ""}
-                onChange={(e) => handleChange("store_address", e.target.value)}
+              onChange={(e) => handleChange("store_address", e.target.value)}
                 placeholder="Masukkan alamat lengkap toko"
-                rows={3}
+              rows={3}
                 className="resize-none"
-              />
-            </div>
+            />
+          </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="space-y-2">
                 <Label htmlFor="store_phone" className="text-sm font-semibold flex items-center gap-2">
                   <Phone className="w-4 h-4 text-gray-500" />
                   Nomor Telepon
                 </Label>
-                <Input
-                  id="store_phone"
+              <Input
+                id="store_phone"
                   value={formData.store_phone || ""}
-                  onChange={(e) => handleChange("store_phone", e.target.value)}
+                onChange={(e) => handleChange("store_phone", e.target.value)}
                   placeholder="Contoh: +62 812-3456-7890"
                   className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                 <Label htmlFor="store_email" className="text-sm font-semibold flex items-center gap-2">
                   <Mail className="w-4 h-4 text-gray-500" />
                   Email Toko
                 </Label>
-                <Input
-                  id="store_email"
-                  type="email"
+              <Input
+                id="store_email"
+                type="email"
                   value={formData.store_email || ""}
-                  onChange={(e) => handleChange("store_email", e.target.value)}
+                onChange={(e) => handleChange("store_email", e.target.value)}
                   placeholder="Contoh: info@tokoberas.com"
                   className="h-11"
-                />
-              </div>
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
         {/* Contact & Social Media */}
         <Card className="shadow-sm border-gray-200">
@@ -289,44 +289,44 @@ export default function AdminSettingsPage() {
                 </CardDescription>
               </div>
             </div>
-          </CardHeader>
+        </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="contact_whatsapp" className="text-sm font-semibold flex items-center gap-2">
                 <Phone className="w-4 h-4 text-gray-500" />
                 WhatsApp
               </Label>
-              <Input
-                id="contact_whatsapp"
+            <Input
+              id="contact_whatsapp"
                 value={formData.contact_whatsapp || ""}
-                onChange={(e) => handleChange("contact_whatsapp", e.target.value)}
+              onChange={(e) => handleChange("contact_whatsapp", e.target.value)}
                 placeholder="Contoh: 081234567890"
                 className="h-11"
-              />
+            />
               <p className="text-xs text-gray-500">
                 Nomor WhatsApp untuk kontak pelanggan
               </p>
-            </div>
-            <div className="space-y-2">
+          </div>
+          <div className="space-y-2">
               <Label htmlFor="contact_instagram" className="text-sm font-semibold flex items-center gap-2">
                 <Instagram className="w-4 h-4 text-gray-500" />
                 Instagram
               </Label>
-              <Input
-                id="contact_instagram"
+            <Input
+              id="contact_instagram"
                 value={formData.contact_instagram || ""}
-                onChange={(e) => handleChange("contact_instagram", e.target.value)}
+              onChange={(e) => handleChange("contact_instagram", e.target.value)}
                 placeholder="Contoh: @tokoberasbca"
                 className="h-11"
-              />
+            />
               <p className="text-xs text-gray-500">
                 Masukkan username Instagram tanpa @
               </p>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Payment Methods */}
+      {/* Payment Methods */}
         <Card className="shadow-sm border-gray-200">
           <CardHeader className="border-b border-gray-200 bg-gray-50/50">
             <div className="flex items-center gap-3">
@@ -342,27 +342,27 @@ export default function AdminSettingsPage() {
                 </CardDescription>
               </div>
             </div>
-          </CardHeader>
+        </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="payment_methods" className="text-sm font-semibold flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-gray-500" />
                 Metode Pembayaran
               </Label>
-              <Textarea
-                id="payment_methods"
+            <Textarea
+              id="payment_methods"
                 value={formData.payment_methods || ""}
-                onChange={(e) => handleChange("payment_methods", e.target.value)}
+              onChange={(e) => handleChange("payment_methods", e.target.value)}
                 placeholder="Contoh: Transfer Bank BCA, COD, E-Wallet (OVO, GoPay, DANA)"
-                rows={4}
+              rows={4}
                 className="resize-none"
-              />
+            />
               <p className="text-xs text-gray-500">
                 Jelaskan metode pembayaran yang diterima toko Anda
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
         {/* Save Button (Sticky) */}
         {hasChanges && (

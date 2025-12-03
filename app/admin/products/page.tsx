@@ -28,6 +28,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface Category {
@@ -44,6 +47,7 @@ interface Product {
   description: string | null;
   category_id: string | null;
   category_name: string | null;
+  weight_kg: number | null;
 }
 
 
@@ -71,7 +75,11 @@ export default function AdminProductsPage() {
     image: "",
     description: "",
     category_id: "",
+    weight_kg: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -95,7 +103,7 @@ export default function AdminProductsPage() {
     queryFn: fetchCategories,
   });
 
-  
+
   useEffect(() => {
     if (productsLoading) {
       toast.loading("Memuat data produk...", { id: "fetch-products" });
@@ -214,11 +222,16 @@ export default function AdminProductsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // If editing and no new image uploaded, keep the existing image
+    const imageUrl = imagePreview && formData.image ? formData.image : formData.image || null;
+
     const payload = {
       ...formData,
+      image: imageUrl,
       price_cents: Number(formData.price_cents) * 100,
       stock: Number(formData.stock) || 0,
       category_id: formData.category_id || null,
+      weight_kg: formData.weight_kg ? Number(formData.weight_kg) : null,
     };
 
     if (editingProduct) {
@@ -237,8 +250,78 @@ export default function AdminProductsPage() {
       image: product.image || "",
       description: product.description || "",
       category_id: product.category_id || "",
+      weight_kg: product.weight_kg ? String(product.weight_kg) : "",
     });
+    setImagePreview(product.image || null);
+    setImageFile(null);
     setIsDialogOpen(true);
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Format file tidak didukung", {
+        description: "Hanya file JPEG, PNG, WEBP, dan GIF yang diizinkan",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error("Ukuran file terlalu besar", {
+        description: "Maksimal ukuran file adalah 5MB",
+      });
+      return;
+    }
+
+    setImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload file
+    setUploadingImage(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Gagal mengupload gambar");
+      }
+
+      const data = await res.json();
+      setFormData({ ...formData, image: data.url });
+      toast.success("Gambar berhasil diupload", {
+        description: "Gambar telah disimpan",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengupload gambar");
+      setImagePreview(null);
+      setImageFile(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setImageFile(null);
+    setFormData({ ...formData, image: "" });
   };
 
   const handleDelete = (id: string) => {
@@ -323,6 +406,27 @@ export default function AdminProductsPage() {
         },
       },
       {
+        accessorKey: "weight_kg",
+        header: ({ column }) => (
+          <SortableHeader column={column}>Berat (kg)</SortableHeader>
+        ),
+        cell: ({ row }) => {
+          const weight = row.getValue("weight_kg");
+          if (weight === null || weight === undefined || weight === "") {
+            return <span className="text-gray-400">-</span>;
+          }
+          const weightNum = typeof weight === "string" ? parseFloat(weight) : Number(weight);
+          if (isNaN(weightNum)) {
+            return <span className="text-gray-400">-</span>;
+          }
+          return (
+            <div className="text-gray-900">
+              {weightNum.toFixed(2)} kg
+            </div>
+          );
+        },
+      },
+      {
         id: "actions",
         header: "Aksi",
         cell: ({ row }) => {
@@ -361,7 +465,10 @@ export default function AdminProductsPage() {
       image: "",
       description: "",
       category_id: "",
+      weight_kg: "",
     });
+    setImagePreview(null);
+    setImageFile(null);
     setEditingProduct(null);
   };
 
@@ -460,42 +567,140 @@ export default function AdminProductsPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="category_id" className="text-sm font-semibold">
-                  Kategori
-                </Label>
-                <select
-                  id="category_id"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors h-11"
-                  value={formData.category_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category_id: e.target.value })
-                  }
-                  disabled={categoriesLoading}
-                >
-                  <option value="">Pilih Kategori</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="weight_kg" className="text-sm font-semibold">
+                    Berat (kg)
+                  </Label>
+                  <Input
+                    id="weight_kg"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.weight_kg}
+                    onChange={(e) =>
+                      setFormData({ ...formData, weight_kg: e.target.value })
+                    }
+                    placeholder="0.00"
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category_id" className="text-sm font-semibold">
+                    Kategori
+                  </Label>
+                  <select
+                    id="category_id"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors h-11"
+                    value={formData.category_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category_id: e.target.value })
+                    }
+                    disabled={categoriesLoading}
+                  >
+                    <option value="">Pilih Kategori</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image" className="text-sm font-semibold">
-                  URL Gambar
+                  Gambar Produk
                 </Label>
+                {imagePreview ? (
+                  <div className="space-y-2">
+                    <div className="relative w-full h-48 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden bg-gray-50">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {uploadingImage && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Mengupload gambar...</span>
+                      </div>
+                    )}
+                    {formData.image && !uploadingImage && (
+                      <p className="text-xs text-gray-500">
+                        Gambar: {formData.image}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      id="image"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      disabled={uploadingImage}
+                    />
+                    <label
+                      htmlFor="image"
+                      className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        uploadingImage
+                          ? "border-gray-200 bg-gray-50 cursor-not-allowed"
+                          : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        {uploadingImage ? (
+                          <>
+                            <Loader2 className="w-10 h-10 mb-3 text-gray-400 animate-spin" />
+                            <p className="text-sm text-gray-500">Mengupload...</p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-10 h-10 mb-3 text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Klik untuk upload</span> atau drag and drop
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, WEBP atau GIF (MAX. 5MB)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                )}
+                {!imagePreview && (
+                  <div className="text-xs text-gray-500">
+                    Atau gunakan URL gambar jika sudah ada di internet
+                  </div>
+                )}
+              </div>
+              {!imagePreview && (
+                <div className="space-y-2">
+                  <Label htmlFor="image-url" className="text-sm font-semibold">
+                    Atau Masukkan URL Gambar
+                  </Label>
                 <Input
-                  id="image"
+                    id="image-url"
                   type="url"
                   value={formData.image}
                   onChange={(e) =>
                     setFormData({ ...formData, image: e.target.value })
                   }
                   placeholder="https://example.com/image.jpg"
-                  className="h-11"
+                    className="h-11"
                 />
               </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-semibold">
                   Deskripsi
@@ -534,7 +739,7 @@ export default function AdminProductsPage() {
                     </>
                   ) : (
                     <>
-                      {editingProduct ? "Perbarui" : "Tambah"}
+                  {editingProduct ? "Perbarui" : "Tambah"}
                     </>
                   )}
                 </Button>
@@ -632,7 +837,7 @@ export default function AdminProductsPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   Mulai dengan menambahkan produk pertama Anda
                 </p>
-              </div>
+                      </div>
             }
             enablePagination={true}
             pageSize={10}

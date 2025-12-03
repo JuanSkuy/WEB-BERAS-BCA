@@ -12,6 +12,9 @@ interface Product {
   name: string;
   price_cents: number;
   stock: number;
+  image: string | null;
+  description: string | null;
+  weight_kg: number | null;
 }
 
 export default function Home() {
@@ -27,12 +30,6 @@ export default function Home() {
   );
   const [contactError, setContactError] = useState("");
 
-  function getProductImage(name: string) {
-    if (name.includes("10kg")) return "/10kg beras.jpg";
-    if (name.includes("20kg")) return "/20kg beras.jpg";
-    if (name.includes("50kg")) return "/50kg beras.jpg";
-    return "/fotoberas.jpg";
-  }
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -182,10 +179,12 @@ export default function Home() {
                     <ProductCard
                       id={item.id}
                       name={item.name}
-                      description="Beras putih pulen berkualitas tinggi, cocok untuk nasi sehari-hari."
+                      description={item.description || "Beras putih pulen berkualitas tinggi, cocok untuk nasi sehari-hari."}
                       price={`Rp${(item.price_cents / 100).toLocaleString("id-ID")}`}
-                      imageUrl={getProductImage(item.name)}
+                      imageUrl={item.image || "/fotoberas.jpg"}
                       stock={item.stock}
+                      weight_kg={item.weight_kg}
+                      price_cents={item.price_cents}
                     />
                   </motion.div>
                 ))

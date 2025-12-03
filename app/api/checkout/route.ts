@@ -9,6 +9,7 @@ type CheckoutRequest = {
   items: CartItem[];
   payment_method?: string;
   shipping_cost_cents?: number;
+  address_id?: string; // ID of saved address (if using saved address)
   customer_info?: {
     name: string;
     phone: string;
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       items,
       payment_method = "transfer",
       shipping_cost_cents = 0,
+      address_id, // ID of saved address (optional)
       customer_info,
     } = (await req.json()) as CheckoutRequest;
 
@@ -89,9 +91,30 @@ export async function POST(req: NextRequest) {
       `;
     }
 
-    // Save customer address (if provided)
+    // Get customer address (either from saved address or create new)
     let savedAddress: any = null;
-    if (customer_info && customer_info.address) {
+    
+    // If address_id is provided, use existing saved address
+    if (address_id) {
+      try {
+        const addrResult = await sql`
+          SELECT id, user_id, label, recipient_name, phone, address, city, postal_code, is_default, created_at, updated_at
+          FROM addresses
+          WHERE id = ${address_id} AND user_id = ${userId}
+        `;
+        const addrRows = Array.isArray(addrResult) ? addrResult : (addrResult as any).rows ?? [];
+        savedAddress = addrRows[0] ?? null;
+        
+        if (!savedAddress) {
+          return NextResponse.json({ error: "Saved address not found or unauthorized" }, { status: 404 });
+        }
+      } catch (addrErr) {
+        console.error("Failed to fetch saved address:", addrErr);
+        return NextResponse.json({ error: "Failed to fetch saved address" }, { status: 500 });
+      }
+    }
+    // If no address_id but customer_info provided, create new address
+    else if (customer_info && customer_info.address) {
       try {
         const addrIns = await sql`
           insert into addresses (user_id, recipient_name, phone, address, city, postal_code, created_at, updated_at)
